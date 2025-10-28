@@ -25,11 +25,13 @@ cd Jumbled-Video-Fixing
 pip install -r requirements.txt
 
 # step 1 – extract frames and compute features
-python prepare_model.py jumbled_video.mp4
+python prepare_model.py input.mp4
+# at the place of input.mp4 write name of the video file you want to fix
 # -> creates ./frames/ with frame images, features.npy, video_info.pkl
 
 # step 2 – rebuild the correct order and export
-python fix_video.py ./frames fixed_video.mp4
+python fix_video.py ./frames output.mp4
+# fixed video file will save as output.mp4
 # add --cleanup to delete the frames folder afterwards if you wish
 ```
 
