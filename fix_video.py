@@ -14,27 +14,32 @@ import time
 def load_prepared_data(frames_folder):
     #load prepared data
     print("\nloading prepared data...")
+    start = time.time()
     
     with open(f"{frames_folder}/video_info.pkl", 'rb') as f:
         video_info = pickle.load(f)
     
     features = np.load(f"{frames_folder}/features.npy")
     
-    print(f"loaded {len(features)} frame features")
+    elapsed = time.time() - start
+    print(f"loaded {len(features)} frame features in {elapsed:.1f}s")
     return video_info, features
 
 
 def find_similarities(features):
     #compare all frames
     print("\ncomparing frames...")
+    start = time.time()
     similarity_matrix = cosine_similarity(features)
-    print("done")
+    elapsed = time.time() - start
+    print(f"done ({len(features)**2:,} comparisons in {elapsed:.1f}s)")
     return similarity_matrix
 
 
 def find_start_candidates(similarity_matrix):
     #find possible start frames
     print("\nfinding start frames...")
+    start = time.time()
     
     neighbor_counts = []
     for i in range(len(similarity_matrix)):
@@ -42,7 +47,8 @@ def find_start_candidates(similarity_matrix):
         neighbor_counts.append(similar_count)
     
     candidates = np.argsort(neighbor_counts)[:10]
-    print(f"found {len(candidates)} candidates")
+    elapsed = time.time() - start
+    print(f"found {len(candidates)} candidates in {elapsed:.2f}s")
     return candidates
 
 
@@ -107,6 +113,7 @@ def check_direction(similarity_matrix, sequence):
 def create_video(frames_folder, sequence, video_info, output_file):
     #create fixed video
     print(f"\ncreating video...")
+    start = time.time()
     
     frame_files = sorted([f for f in os.listdir(frames_folder) if f.endswith('.jpg')])
     
@@ -121,8 +128,10 @@ def create_video(frames_folder, sequence, video_info, output_file):
     
     video_writer.release()
     
+    elapsed = time.time() - start
     file_size = os.path.getsize(output_file) / (1024 * 1024)
-    print(f"video created: {file_size:.1f} MB")
+    print(f"video created: {file_size:.1f} MB in {elapsed:.1f}s")
+    return elapsed
 
 
 def show_results(quality, total_time, output_file):
@@ -140,14 +149,47 @@ def fix_video(frames_folder, output_file, cleanup=False):
     start_time = time.time()
     
     try:
+        #step 1: load data
+        step_start = time.time()
         video_info, features = load_prepared_data(frames_folder)
+        load_time = time.time() - step_start
+        
+        #step 2: compare frames
+        step_start = time.time()
         similarity_matrix = find_similarities(features)
+        similarity_time = time.time() - step_start
+        
+        #step 3: find candidates
+        step_start = time.time()
         candidates = find_start_candidates(similarity_matrix)
+        candidates_time = time.time() - step_start
+        
+        #step 4: find sequence
+        step_start = time.time()
         sequence, quality = find_best_sequence(similarity_matrix, candidates)
+        sequence_time = time.time() - step_start
+        
+        #step 5: check direction
+        step_start = time.time()
         sequence, quality = check_direction(similarity_matrix, sequence)
-        create_video(frames_folder, sequence, video_info, output_file)
+        direction_time = time.time() - step_start
+        
+        #step 6: create video
+        step_start = time.time()
+        creation_time = create_video(frames_folder, sequence, video_info, output_file)
         
         total_time = time.time() - start_time
+        
+        #print timing breakdown
+        print("\nexecution time breakdown:")
+        print(f"  data loading: {load_time:.1f}s")
+        print(f"  similarity computation: {similarity_time:.1f}s")
+        print(f"  candidate finding: {candidates_time:.1f}s")
+        print(f"  sequence reconstruction: {sequence_time:.1f}s")
+        print(f"  direction correction: {direction_time:.1f}s")
+        print(f"  video creation: {creation_time:.1f}s")
+        print(f"  total time: {total_time:.1f}s")
+        
         show_results(quality, total_time, output_file)
         
         if cleanup:
