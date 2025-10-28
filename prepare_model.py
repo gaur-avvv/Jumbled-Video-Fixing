@@ -11,11 +11,13 @@ from PIL import Image
 import os
 import pickle
 import argparse
+import time
 
 
 def extract_frames(video_file, output_folder):
     #extract all frames from video
     print(f"\nextracting frames from {video_file}...")
+    start = time.time()
     
     os.makedirs(output_folder, exist_ok=True)
     
@@ -41,14 +43,16 @@ def extract_frames(video_file, output_folder):
         count += 1
     
     video.release()
-    print(f"extracted {count} frames")
+    elapsed = time.time() - start
+    print(f"extracted {count} frames in {elapsed:.1f}s")
     
-    return {'fps': fps, 'width': width, 'height': height, 'total_frames': count}
+    return {'fps': fps, 'width': width, 'height': height, 'total_frames': count, 'extraction_time': elapsed}
 
 
 def load_model():
     #load resnet50 model
     print("\nloading AI model...")
+    start = time.time()
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"using {device}")
@@ -61,8 +65,9 @@ def load_model():
     for param in model.parameters():
         param.requires_grad = False
     
-    print("model loaded")
-    return model, device
+    elapsed = time.time() - start
+    print(f"model loaded in {elapsed:.1f}s")
+    return model, device, elapsed
 
 
 def prepare_transform():
@@ -78,6 +83,7 @@ def prepare_transform():
 def analyze_frames(frames_folder, model, device):
     #analyze frames with AI
     print("\nanalyzing frames...")
+    start = time.time()
     
     frame_files = sorted([f for f in os.listdir(frames_folder) if f.endswith('.jpg')])
     transform = prepare_transform()
@@ -104,8 +110,9 @@ def analyze_frames(frames_folder, model, device):
             features = features.reshape(1, -1)
         all_features.append(features)
     
-    print(f"analyzed {len(frame_files)} frames")
-    return np.vstack(all_features)
+    elapsed = time.time() - start
+    print(f"analyzed {len(frame_files)} frames in {elapsed:.1f}s")
+    return np.vstack(all_features), elapsed
 
 
 def save_data(frames_folder, video_info, features):
@@ -125,6 +132,7 @@ def save_data(frames_folder, video_info, features):
 def prepare_video(video_file, output_folder="./frames"):
     #prepare video for fixing
     print("\npreparing model data...")
+    total_start = time.time()
 
     try:
         #extract frames
@@ -133,18 +141,24 @@ def prepare_video(video_file, output_folder="./frames"):
             return False
         
         #load model
-        model, device = load_model()
+        model, device, model_time = load_model()
         
         #analyze frames
-        features = analyze_frames(output_folder, model, device)
+        features, analysis_time = analyze_frames(output_folder, model, device)
         
         #save data
         save_data(output_folder, video_info, features)
         
+        total_time = time.time() - total_start
         print("\npreparation complete")
         print(f"frames folder: {output_folder}")
         print(f"total frames: {video_info['total_frames']}")
-        print(f"next step: python fix_video.py {output_folder} output.mp4")
+        print(f"\nexecution time breakdown:")
+        print(f"  frame extraction: {video_info['extraction_time']:.1f}s")
+        print(f"  model loading: {model_time:.1f}s")
+        print(f"  frame analysis: {analysis_time:.1f}s")
+        print(f"  total time: {total_time:.1f}s")
+        print(f"\nnext step: python fix_video.py {output_folder} output.mp4")
         
         return True
         
