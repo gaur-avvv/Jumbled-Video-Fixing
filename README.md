@@ -71,10 +71,6 @@ Video_Reconstruction_Tutorial.ipynb  # Notebook / Colab workflow
 requirements.txt             # Python dependencies
 ```
 
-## Optional VS Code Enhancement
-
-To preview reconstructed videos inside VS Code, install the **Video Preview** extension (`digitallyinduced.video-preview`). Right-click the MP4 file and choose **Open with Video Preview**.
-
 ## License & Contributions
 
 Open source and contributions are welcome. Please open an issue or submit a pull request with improvements or questions.
